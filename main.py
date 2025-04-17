@@ -32,14 +32,24 @@ if __name__ == "__main__":
                 current += 1
                
     async def main():
-        await VJBot.start()
-        bot_info = await VJBot.get_me()
-        await restart_forwards(VJBot)
-        print("Bot Started.")
-        await idle()
+        try:
+            await VJBot.start()
+            bot_info = await VJBot.get_me()
+            loop = asyncio.get_running_loop()
+            await restart_forwards(VJBot)
+            print("Bot Started.")
+            await idle()
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            await VJBot.stop()
 
-    # Fix for deprecation warning
+    # Set up the event loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     try:
-        asyncio.run(main())
+        loop.run_until_complete(main())
     except KeyboardInterrupt:
         pass
+    finally:
+        loop.close()
