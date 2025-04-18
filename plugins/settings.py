@@ -79,18 +79,20 @@ async def settings_query(bot, query):
         reply_markup=InlineKeyboardMarkup(buttons))
 
   elif type=="channels":
-     buttons = []
-     channels = await db.get_user_channels(user_id)
-     for channel in channels:
-        buttons.append([InlineKeyboardButton(f"{channel['title']}",
-                         callback_data=f"settings#editchannels_{channel['chat_id']}")])
-     buttons.append([InlineKeyboardButton('✚ Add Channel ✚', 
-                      callback_data="settings#addchannel")])
-     buttons.append([InlineKeyboardButton('back', 
-                      callback_data="settings#main")])
-     await query.message.edit_text( 
-       "<b><u>My Channels</b></u>\n\n<b>you can manage your target chats in here</b>",
-       reply_markup=InlineKeyboardMarkup(buttons))
+        buttons = []
+        channels = await db.get_user_channels(user_id)
+        for channel in channels:
+            buttons.append([InlineKeyboardButton(f"{channel['title']}", 
+                            callback_data=f"settings#editchannels_{channel['chat_id']}")])
+        buttons.append([InlineKeyboardButton('✚ Add Channel ✚', 
+                         callback_data="settings#addchannel")])
+        buttons.append([InlineKeyboardButton('✚ Add Any Chat ✚', 
+                         callback_data="settings#addanychat")])
+        buttons.append([InlineKeyboardButton('back', 
+                         callback_data="settings#main")])
+        await query.message.edit_text(
+            "<b><u>My Chats</b></u>\n\n<b>you can manage your target chats in here</b>",
+            reply_markup=InlineKeyboardMarkup(buttons))
 
   elif type=="addchannel":  
      await query.message.delete()
@@ -110,6 +112,39 @@ async def settings_query(bot, query):
      await query.message.reply_text(
         "<b>Successfully updated</b>" if chat else "<b>This channel already added</b>",
         reply_markup=InlineKeyboardMarkup(buttons))
+        
+  elif type=="addanychat":
+        await query.message.delete()
+        chat_id_msg = await bot.ask(
+            chat_id=query.from_user.id,
+            text="<b>❪ SET TARGET CHAT ❫\n\nPlease send the chat ID of the group/supergroup\n\nNote: Make sure the bot is admin in the chat\n\n/cancel - cancel this process</b>"
+        )
+        
+        if chat_id_msg.text=="/cancel":
+            return await chat_id_msg.reply_text(
+                "<b>process canceled</b>",
+                reply_markup=InlineKeyboardMarkup(buttons))
+        
+        try:
+            chat_id = int(chat_id_msg.text)
+            chat = await bot.get_chat(chat_id)
+            title = chat.title
+            username = chat.username
+            username = "@" + username if username else "private"
+            
+            chat_added = await db.add_channel(user_id, chat_id, title, username)
+            await query.message.reply_text(
+                "<b>Successfully updated</b>" if chat_added else "<b>This chat already added</b>",
+                reply_markup=InlineKeyboardMarkup(buttons))
+                
+        except ValueError:
+            await chat_id_msg.reply_text(
+                "<b>Invalid chat ID format. Please send a valid numeric chat ID</b>",
+                reply_markup=InlineKeyboardMarkup(buttons))
+        except Exception as e:
+            await chat_id_msg.reply_text(
+                "<b>Failed to add chat. Make sure:\n1. The chat ID is correct\n2. The bot is admin in the chat</b>",
+                reply_markup=InlineKeyboardMarkup(buttons))      
 
   elif type=="editbot": 
      bot = await db.get_bot(user_id)
